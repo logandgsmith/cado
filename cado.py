@@ -10,11 +10,29 @@ __version__ = 'cado v0.1.0'
 
 import argparse
 import getpass
-#import nltk
+import nltk
 import os
 import platform
 
 from pathlib import Path
+
+class TextClassifier:
+    def __init__(self):
+        self.classifier = None
+        self.training_folder = 'training_docs'
+        self.subject_words = [] # Subject specific word dictionaries
+
+    def train(self):
+        training_files = [file for file in os.listdir(self.training_folder) if os.path.isfile(os.path.join(self.training_folder, file))]
+        for file in training_files:
+            with open(file) as this_file:
+                self.subject_words.append(this_file.readlines())
+
+    def predict(self):
+        pass
+
+def file_content_sort(downloads_path):
+    """Sorts files into subfolders based on their content"""
 
 def create_test_files(test_path):
     """Creates a number of empty files for testing the file extension sorting"""
@@ -105,6 +123,7 @@ def file_ext_sort(downloads_path):
         folder_to = os.path.join(folder_to, file)
         folder_from = os.path.join(downloads_path, file)
 
+        # Debugging output
         print(f'    FROM: {folder_from}')
         print(f'      TO: {folder_to}')
 
@@ -116,7 +135,7 @@ def main():
     parser = argparse.ArgumentParser(description='Sorts files in a given directory. Defaults to the Downloads directory.')
     parser.add_help = True
     parser.add_argument('-p', '--path', help='Override default behavior. Path to the folder to sort.')
-    parser.add_argument('-t', '--testfiles', action='store_true', help='Creates test files. Must specify the "-p" flag to use this one.')
+    parser.add_argument('-t', '--testfiles', action='store_true', help='Creates test files instead of sorting. Must specify the "-p" flag to use this.')
     parser.add_argument('--version', action='version', version=__version__)
     flags = parser.parse_args()
 
@@ -125,6 +144,7 @@ def main():
         # Create test files if desired
         if flags.testfiles:
             create_test_files(flags.path)
+            return
         
         # Sorting by file extension
         print(f'Attempting to sort {flags.path}')
