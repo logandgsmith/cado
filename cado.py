@@ -9,10 +9,12 @@ __version__ = 'cado v0.1.0'
 # Author: Logan D.G. Smith
 
 import argparse
+import docx
 import getpass
 import nltk
 import os
 import platform
+import PyPDF2
 
 from pathlib import Path
 
@@ -20,16 +22,93 @@ class TextClassifier:
     def __init__(self):
         self.classifier = None
         self.training_folder = 'training_docs'
+        self.subjects = []
         self.subject_words = [] # Subject specific word dictionaries
+        self.subject_dictionary = {}
 
     def train(self):
-        training_files = [file for file in os.listdir(self.training_folder) if os.path.isfile(os.path.join(self.training_folder, file))]
+        # Format and organize the words
+        training_files = [os.path.join(self.training_folder, file) for file in os.listdir(self.training_folder) if os.path.isfile(os.path.join(self.training_folder, file))]
         for file in training_files:
+            self.subjects.append(file.replace('.txt', '').replace('training_docs/', ''))
             with open(file) as this_file:
                 self.subject_words.append(this_file.readlines())
+        
+        # Strip and tag the words
+        for index, word_sets in enumerate(self.subject_words):
+            new_set = []
+            for word in word_sets:
+                stripped_word = word.strip('\n')
+                new_set.append((stripped_word, self.subjects[index]))
+                self.subject_dictionary[stripped_word] = index
+            self.subject_words[index] = new_set
+
+        # Feature Extraction
+        feature_sets = []
+        for subjects in self.subject_words:
+            feature_sets += [(self.matching_features(line), subject) for (line, subject) in subjects]
+
+        self.classifier = nltk.NaiveBayesClassifier.train(feature_sets)
 
     def predict(self):
         pass
+
+    # Naive classification of text based on the similarity to subject
+    def matching_features(self, line: str):
+        scores = [0] * len(self.subjects)
+
+        # Find all words in the top occuring
+        words = nltk.word_tokenize(line)
+
+        for word in words:
+            subject_index = self.subject_dictionary.get(word, -1)
+            if subject_index == -1:
+                continue
+            scores[subject_index] += 1
+
+        most_like = scores.index(max(scores))
+
+        # Returning the scores
+        return {'subject' : most_like}
+
+
+def read_docx(path: str) -> list:
+    """Reads a docx and returns list of non-symbol words"""
+    doc = docx.Document(path)
+    lines = [paragraph.text for paragraph in doc.paragraphs]
+    
+    # Read lines of the word doc
+    words = []
+    for line in lines:
+        if line != '':
+            words += nltk.word_tokenize(line)
+
+    # Strip symbols and put words in lowercase
+    tokens = []
+    for word in words:
+        if word not in '!@#$%^&*(),<>./?\'\"\\':
+            tokens.append(word.lower())
+
+    return tokens
+
+def read_pdf(path: str) -> list:
+    """Reads a pdf and returns list of non-symbol words"""
+    # Open the PDF
+    with open(path, 'rb') as pdf:
+        # Read the contents of the PDF
+        pdf = PyPDF2.PdfFileReader(pdf)
+        pages = []
+        for x in range(pdf.numPages):
+            page = pdf.getPage(x).extractText().replace('\n', '')
+            pages += nltk.word_tokenize(page)
+
+        # Strip symbols and put words in lowercase
+        tokens = []
+        for word in pages:
+            if word not in '!@#$%^&*(),<>./\'\"\\':
+                tokens.append(word.lower())
+
+    return tokens
 
 def file_content_sort(downloads_path):
     """Sorts files into subfolders based on their content"""
@@ -182,4 +261,8 @@ def main():
         print(f'Cannot find the path: "{path}".')
         
 if __name__ == '__main__':
-    main()
+    #main()
+    print('UNCOMMENT THE MAIN FUNCTION')
+    tc = TextClassifier()
+    tc.train()
+    print(tc.subject_words)

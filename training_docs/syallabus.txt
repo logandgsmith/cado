@@ -1,6 +1,11 @@
 Office
 Hours
 M T W R F
+M
+T
+W
+R
+F
 Professor
 Grades
 Grading
@@ -82,6 +87,10 @@ Weekday
 Week
 Weeks
 A B C D E
+B
+C
+D
+E
 Syllabus
 Dr
 Dr.
