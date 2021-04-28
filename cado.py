@@ -15,6 +15,7 @@ import nltk
 import os
 import platform
 import PyPDF2
+import shutil
 
 from pathlib import Path
 
@@ -30,7 +31,7 @@ class TextClassifier:
         # Format and organize the words
         training_files = [os.path.join(self.training_folder, file) for file in os.listdir(self.training_folder) if os.path.isfile(os.path.join(self.training_folder, file))]
         for file in training_files:
-            self.subjects.append(file.replace('.txt', '').replace('training_docs/', ''))
+            self.subjects.append(file.replace('.txt', '').replace('training_docs/', '').replace('training_docs\\', ''))
             with open(file) as this_file:
                 self.subject_words.append(this_file.readlines())
         
@@ -89,7 +90,7 @@ def read_docx(path: str) -> list:
         doc = docx.Document(path)
         lines = [paragraph.text for paragraph in doc.paragraphs]
     except:
-        lines = ''
+        lines = []
     
     # Read lines of the word doc
     words = []
@@ -101,8 +102,8 @@ def read_docx(path: str) -> list:
 
 def read_pdf(path: str) -> list:
     """Reads a pdf and returns list of non-symbol words"""
+    # Open the PDF
     try:
-        # Open the PDF
         with open(path, 'rb') as pdf:
             # Read the contents of the PDF
             pdf = PyPDF2.PdfFileReader(pdf)
@@ -117,12 +118,8 @@ def read_pdf(path: str) -> list:
 
 def read_txt(path: str) -> list:
     """Read text files"""
-    textstr = ''
-    try:
-        with open(path, 'r') as txt:
-            textstr = txt.read()
-    except:
-        textstr = ''
+    with open(path, 'r') as txt:
+        textstr = txt.read()
     
     return strip_symbols(nltk.word_tokenize(textstr))
 
@@ -167,6 +164,14 @@ def create_test_files(test_path):
         filename = key[1:] + '_test' + key
         Path(os.path.join(test_path, filename)).touch()
 
+    # Optional example_files
+    if os.path.isdir('example_files'):
+        files = [file for file in os.listdir('example_files') if os.path.isfile(os.path.join('example_files', file))]
+        if files:
+            for file in files:
+                shutil.copyfile(os.path.join('example_files', file), os.path.join(test_path, file))
+
+
 def classify_files(path: str) -> list:
     """Classifies files and sorts them into subfolders"""
     # Initializations
@@ -177,17 +182,17 @@ def classify_files(path: str) -> list:
 
     # Attempt to collect files
     files = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file))]
-    
+
     # Attempt to read files
     for file in files:
         text = []
         classification = 'Misc'
         if file.endswith('.docx'):
-            text = read_docx(file)
+            text = read_docx(os.path.join(path,file))
         elif file.endswith('.pdf'):
-            text = read_pdf(file)
+            text = read_pdf(os.path.join(path, file))
         elif file.endswith('.txt'):
-            text = read_txt(file)
+            text = read_txt(os.path.join(path, file))
 
         if text:
             classification = classifier.predict(text)
